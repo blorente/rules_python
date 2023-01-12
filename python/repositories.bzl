@@ -290,7 +290,7 @@ python_repository = repository_rule(
             mandatory = False,
         ),
         "ignore_root_user_error": attr.bool(
-            default = False,
+            default = True,
             doc = "Whether the check for root should be ignored or not. This causes cache misses with .pyc files.",
             mandatory = False,
         ),

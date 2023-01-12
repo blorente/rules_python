@@ -78,7 +78,7 @@ func (py *Python) Loads() []rule.LoadInfo {
 
 var pyLoads = []rule.LoadInfo{
 	{
-		Name: "@rules_python//python:defs.bzl",
+		Name: "@apple_federation//python:defs.bzl",
 		Symbols: []string{
 			pyBinaryKind,
 			pyLibraryKind,

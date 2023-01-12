@@ -187,11 +187,29 @@ def _parse_optional_attrs(rctx, args):
     if rctx.attr.enable_implicit_namespace_pkgs:
         args.append("--enable_implicit_namespace_pkgs")
 
+    env = {}
+
     if rctx.attr.environment != None:
-        args += [
-            "--environment",
-            json.encode(struct(arg = rctx.attr.environment)),
-        ]
+        for key, value in rctx.attr.environment.items():
+            env[key] = value
+
+    # This is super hacky, but working out how to upstream something nice is tricky.
+    # This is in particular needed for psycopg2 which attempts to link libpython.a,
+    # in order to point the linker at the correct python intepreter.
+    if rctx.attr.add_libdir_to_library_search_path:
+        if "LDFLAGS" in env:
+            fail("Can't set both environment LDFLAGS and add_libdir_to_library_search_path")
+        command = [_resolve_python_interpreter(rctx), "-c", "import sys ; sys.stdout.write('{}/lib'.format(sys.exec_prefix))"]
+        result = rctx.execute(command)
+        if result.return_code != 0:
+            fail("Failed to get LDFLAGS path: command: {}, exit code: {}, stdout: {}, stderr: {}".format(command, result.return_code, result.stdout, result.stderr))
+        libdir = result.stdout
+        env["LDFLAGS"] = "-L{}".format(libdir)
+
+    args += [
+        "--environment",
+        json.encode(struct(arg = env)),
+    ]
 
     return args
 
@@ -359,6 +377,12 @@ common_env = [
 ]
 
 common_attrs = {
+    "add_libdir_to_library_search_path": attr.bool(
+        default = False,
+        doc = """
+Apple-internal: If true, add the lib dir of the bundled interpreter to the library search path via LDFLAGS.
+""",
+    ),
     "download_only": attr.bool(
         doc = """
 Whether to use "pip download" instead of "pip wheel". Disables building wheels from source, but allows use of
